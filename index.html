@@ -11,55 +11,25 @@
         box-sizing: border-box;
       }
       body {
-        overflow: hidden;
-        background: linear-gradient(
-          135deg,
-          #1a0a1f 0%,
-          #3d1030 40%,
-          #7a1f4d 70%,
-          #c23a6b 100%
-        );
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family:
-          "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+        font-family: "Courier New", monospace;
+        background: #12101a;
         color: #fff;
+        overflow: hidden;
       }
-      #heartCanvas {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-      }
-      .falling-hearts {
+      .pixel-hearts {
         position: fixed;
         inset: 0;
-        z-index: 2;
+        z-index: 1;
         pointer-events: none;
-      }
-      .falling-hearts span {
-        position: absolute;
-        font-size: 18px;
-        color: rgba(255, 182, 193, 0.5);
-        animation: fall linear infinite;
-        user-select: none;
-      }
-      @keyframes fall {
-        0% {
-          transform: translateY(-10vh) rotate(0deg);
-          opacity: 0;
-        }
-        10% {
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(110vh) rotate(360deg);
-          opacity: 0.2;
-        }
+        font-size: 26px;
+        color: #ff4f7b;
+        line-height: 1.15;
+        white-space: pre;
+        text-align: center;
       }
       .content {
         position: relative;
@@ -79,180 +49,83 @@
         }
       }
       .name {
-        font-size: clamp(48px, 10vw, 96px);
+        font-size: clamp(44px, 9vw, 80px);
         font-weight: 700;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.12em;
+        color: #00ffa3;
         text-shadow:
-          0 0 30px rgba(255, 105, 150, 0.8),
-          0 0 60px rgba(255, 105, 150, 0.5);
+          0 0 16px rgba(0, 255, 163, 0.5),
+          4px 4px 0 #7a2d3f;
         margin-bottom: 24px;
-        animation: glow 2s ease-in-out infinite alternate;
-      }
-      @keyframes glow {
-        from {
-          text-shadow:
-            0 0 20px rgba(255, 105, 150, 0.6),
-            0 0 40px rgba(255, 105, 150, 0.3);
-        }
-        to {
-          text-shadow:
-            0 0 30px rgba(255, 105, 150, 0.9),
-            0 0 70px rgba(255, 105, 150, 0.6),
-            0 0 100px rgba(255, 182, 193, 0.5);
-        }
       }
       .message {
-        font-size: clamp(20px, 4vw, 34px);
-        font-weight: 300;
-        letter-spacing: 0.25em;
+        font-size: clamp(18px, 3.5vw, 30px);
+        letter-spacing: 0.2em;
+        color: #ff4f7b;
+        text-shadow:
+          0 0 14px rgba(255, 79, 123, 0.5),
+          3px 3px 0 #2d1f7a;
         opacity: 0;
-        animation: fadeIn 2s ease 1.2s forwards;
-        color: #ffd9e8;
+        animation: fadeIn 2s ease 1.4s forwards;
       }
       .message::after {
         content: "|";
         animation: blink 1s step-end infinite;
         margin-left: 4px;
-        color: #ff9ab8;
       }
       @keyframes blink {
         50% {
           opacity: 0;
         }
       }
-      .signature {
+      .hud {
         margin-top: 40px;
-        font-size: clamp(14px, 2.5vw, 20px);
-        color: rgba(255, 255, 255, 0.65);
-        letter-spacing: 0.1em;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.4);
+        letter-spacing: 0.4em;
         opacity: 0;
-        animation: fadeIn 2s ease 2.4s forwards;
+        animation: fadeIn 2s ease 2.6s forwards;
       }
-      .hearts-row {
-        margin-top: 30px;
-        font-size: 28px;
-        letter-spacing: 12px;
-        opacity: 0;
-        animation: fadeIn 2s ease 3s forwards;
+      .hud .heart {
+        color: #ff4f7b;
+        text-shadow: 0 0 8px #ff4f7b;
       }
     </style>
   </head>
   <body>
-    <canvas id="heartCanvas"></canvas>
-    <div class="falling-hearts" id="fallingHearts"></div>
+    <div class="pixel-hearts" id="ph"></div>
     <div class="content">
-      <div class="name">范忠颖</div>
-      <div class="hearts-row">♥ ♥ ♥</div>
+      <div class="name">最最好宝宝</div>
+      <div class="message">相遇第二天你感觉还好吗？</div>
+      <div class="hud">LOVE LEVEL <span class="heart">♥♥♥♥♥</span> MAX</div>
     </div>
     <script>
-      // 心形粒子动画
-      const canvas = document.getElementById("heartCanvas");
-      const ctx = canvas.getContext("2d");
-      let width,
-        height,
-        particles = [];
-      const HEART_COUNT = 280;
-
-      function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-      }
-      window.addEventListener("resize", resize);
-      resize();
-
-      // 心形曲线参数方程
-      function heartX(t) {
-        return 16 * Math.pow(Math.sin(t), 3);
-      }
-      function heartY(t) {
-        return (
-          13 * Math.cos(t) -
-          5 * Math.cos(2 * t) -
-          2 * Math.cos(3 * t) -
-          Math.cos(4 * t)
+      // 像素爱心雨
+      const el = document.getElementById("ph");
+      let rows = [];
+      function build() {
+        const w = Math.floor(window.innerWidth / 28) || 20;
+        const h = Math.floor(window.innerHeight / 30) || 20;
+        rows = Array.from({ length: h }, () =>
+          Array.from({ length: w }, () => (Math.random() < 0.03 ? "♥" : "·")),
         );
       }
-
-      const TARGET = [];
-      const scale = Math.min(width, height) / 32;
-      const cx = width / 2;
-      const cy = height / 2 - 20;
-      for (let i = 0; i < HEART_COUNT; i++) {
-        const t = (i / HEART_COUNT) * Math.PI * 2;
-        TARGET.push({
-          x: cx + heartX(t) * scale * 1.05,
-          y: cy - heartY(t) * scale * 1.05,
-        });
-        particles.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          tx: TARGET[i].x,
-          ty: TARGET[i].y,
-          size: 1.5 + Math.random() * 2.5,
-          speed: 0.012 + Math.random() * 0.02,
-          phase: Math.random() * Math.PI * 2,
-        });
-      }
-
-      let time = 0;
-      function draw() {
-        ctx.clearRect(0, 0, width, height);
-        time += 0.005;
-
-        // 外围光晕
-        ctx.save();
-        ctx.globalAlpha = 0.15;
-        ctx.shadowBlur = 60;
-        ctx.shadowColor = "#ff6b9d";
-        ctx.fillStyle = "#ff6b9d";
-        ctx.beginPath();
-        for (let i = 0; i <= 100; i++) {
-          const t = (i / 100) * Math.PI * 2;
-          const px = cx + heartX(t) * scale * 1.2;
-          const py = cy - heartY(t) * scale * 1.2;
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      build();
+      window.addEventListener("resize", build);
+      function render() {
+        // 随机生成新爱心
+        for (let i = 0; i < rows.length; i++) {
+          if (Math.random() < 0.02)
+            rows[i][Math.floor(Math.random() * rows[i].length)] = "♥";
         }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-
-        particles.forEach((p, i) => {
-          p.x += (p.tx - p.x) * p.speed;
-          p.y += (p.ty - p.y) * p.speed;
-
-          // 呼吸效果
-          const breathe = 1 + Math.sin(time * 3 + p.phase) * 0.12;
-          const px =
-            p.tx + (p.x - p.tx) * 0.1 + Math.sin(time * 2 + p.phase) * 2;
-          const py =
-            p.ty + (p.y - p.ty) * 0.1 + Math.cos(time * 2 + p.phase) * 2;
-
-          const hue = 335 + Math.sin(time * 2 + p.phase) * 20;
-          ctx.beginPath();
-          ctx.arc(px, py, p.size * breathe, 0, Math.PI * 2);
-          ctx.fillStyle = `hsla(${hue}, 90%, 75%, 0.9)`;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "#ff6b9d";
-          ctx.fill();
-        });
-
-        requestAnimationFrame(draw);
+        // 下落
+        const bottom = rows[rows.length - 1];
+        for (let i = rows.length - 1; i > 0; i--) rows[i] = rows[i - 1];
+        rows[0] = bottom.map(() => (Math.random() < 0.05 ? "♥" : "·"));
+        el.textContent = rows.map((r) => r.join(" ")).join("\n");
+        requestAnimationFrame(() => setTimeout(render, 120));
       }
-      draw();
-
-      // 飘落爱心
-      const heartSymbols = ["❤", "💗", "💖", "💕", "♥"];
-      for (let i = 0; i < 20; i++) {
-        const span = document.createElement("span");
-        span.textContent =
-          heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
-        span.style.left = Math.random() * 100 + "%";
-        span.style.fontSize = 12 + Math.random() * 20 + "px";
-        span.style.animationDuration = 6 + Math.random() * 8 + "s";
-        span.style.animationDelay = Math.random() * 8 + "s";
-        span.style.opacity = 0.3 + Math.random() * 0.4;
-        document.getElementById("fallingHearts").appendChild(span);
-      }
+      render();
     </script>
   </body>
 </html>
